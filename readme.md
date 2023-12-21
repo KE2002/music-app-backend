@@ -201,3 +201,5 @@ Basic music application to handle songs collection and playlist creation. users 
     Returns:
     - Information about the specified song.
     
+#
+#### Schema Diagram https://drawsql.app/teams/core_dumped-1/diagrams/music-app
