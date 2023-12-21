@@ -2,6 +2,9 @@
 
 Basic music application to handle songs collection and playlist creation. users can rate a song, share a song to another user. Song recommendation based on user's playlist and full text search
 
+#
+#### Schema Diagram https://drawsql.app/teams/core_dumped-1/diagrams/music-app
+#
 ## Endpoints
 
 ### <span style="font-family:consolas;"><span style="color:yellow">POST</span> /login</span>
@@ -201,5 +204,3 @@ Basic music application to handle songs collection and playlist creation. users 
     Returns:
     - Information about the specified song.
     
-#
-#### Schema Diagram https://drawsql.app/teams/core_dumped-1/diagrams/music-app
