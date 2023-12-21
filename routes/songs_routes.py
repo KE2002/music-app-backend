@@ -7,7 +7,7 @@ import qrcode
 from fastapi.responses import HTMLResponse, FileResponse
 
 
-router = APIRouter()
+router = APIRouter(tags=["Songs"])
 
 
 @router.get("/songsES")
