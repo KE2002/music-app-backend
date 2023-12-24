@@ -57,8 +57,22 @@ async def populate_tables(file: UploadFile = File(...)):
 
 @app.post("/populate_elastic", response_model=List[SongList])
 async def populate_tables():
-    if not es.indices.exists(index="songs"):
-        es.indices.create(index="songs")
+    if not es.indices.exists(index="songs_final"):
+        es.indices.create(
+            index="songs_final",
+            body={
+                "mappings": {
+                    "properties": {
+                        "_score": {"type": "float", "store": True},
+                        "id": {"type": "keyword"},
+                        "artist_id": {"type": "keyword"},
+                        "genre_id": {"type": "keyword"},
+                        "album_id": {"type": "keyword"},
+                        "total_ratings": {"type": "float"},
+                    }
+                },
+            },
+        )
 
     songs_query = session.query(Models.Song).all()
     for item in songs_query:
@@ -67,6 +81,7 @@ async def populate_tables():
             .filter(Models.SongRating.song_id == item.id)
             .scalar()
         )
+
         it = {
             "id": item.id,
             "title": item.title,
@@ -78,7 +93,7 @@ async def populate_tables():
             "album_id": item.album.id,
             "total_ratings": 0.00 if not tot_rating else tot_rating,
         }
-        es.index(index="songs", body=it, id=item.id)
+        es.index(index="songs_final", body=it, id=item.id)
     return songs_query
 
 

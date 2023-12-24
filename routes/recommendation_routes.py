@@ -11,7 +11,7 @@ from nltk.tokenize import word_tokenize
 router = APIRouter(tags=["recommend"])
 
 
-@router.get("/songRecommendationES")
+@router.post("/songRecommendationES")
 def song_recommend(current_user=Depends(active_user)):
     """
     Get song recommendations for the current user based on their playlists.
@@ -51,33 +51,75 @@ def song_recommend(current_user=Depends(active_user)):
         # print(list(english_stopwords))
         mlt_query = {
             "query": {
-                "more_like_this": {
-                    "fields": ["artist_name", "genre_name", "album_name"],
-                    "like": song_merge,
-                    "min_term_freq": 2,
-                    "stop_words": list(english_stopwords),
+                "function_score": {
+                    "query": {
+                        "bool": {
+                            "should": [
+                                {
+                                    "more_like_this": {
+                                        "fields": [
+                                            "artist_name",
+                                            "album_name.keyword",
+                                            "genre_name.keyword",
+                                        ],
+                                        "like": song_merge,
+                                        "stop_words": list(english_stopwords),
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "boost_mode": "replace",
+                    "score_mode": "sum",
                 }
             },
             "aggs": {
-                "details": {
-                    "top_hits": {
-                        "size": 5,
-                        "_source": {
-                            "includes": [
-                                "title",
-                                "song_id",
-                                "genre_name",
-                                "artist_name",
-                                "album_name",
-                            ]
+                "top_artists": {
+                    "terms": {
+                        "field": "artist_name.keyword",
+                        "order": {"total_score": "desc"},
+                    },
+                    "aggs": {
+                        "total_score": {"sum": {"script": "_score"}},
+                        "order_total_score": {
+                            "bucket_selector": {
+                                "buckets_path": {"totalScore": "total_score"},
+                                "script": "params.totalScore > 0",
+                            }
                         },
-                    }
-                }
+                    },
+                },
+                "top_genres": {
+                    "terms": {
+                        "field": "genre_name.keyword",
+                        "order": {"total_score": "desc"},
+                    },
+                    "aggs": {
+                        "total_score": {"sum": {"script": "_score"}},
+                        "order_total_score": {
+                            "bucket_selector": {
+                                "buckets_path": {"totalScore": "total_score"},
+                                "script": "params.totalScore > 0",
+                            }
+                        },
+                    },
+                },
+                "top_albums": {
+                    "terms": {
+                        "field": "album_name.keyword",
+                        "order": {"total_score": "desc"},
+                    },
+                    "aggs": {
+                        "total_score": {"sum": {"script": "_score"}},
+                        "order_total_score": {
+                            "bucket_selector": {
+                                "buckets_path": {"totalScore": "total_score"},
+                                "script": "params.totalScore > 0",
+                            }
+                        },
+                    },
+                },
             },
-            "_source": {
-                "includes": ["_id", "title", "artist_name", "genre_name", "album_name"]
-            },
-            "explain": True,
         }
 
         result = es.search(index="songs", body=mlt_query, size=100)
