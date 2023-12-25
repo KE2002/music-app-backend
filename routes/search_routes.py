@@ -1,8 +1,9 @@
 from configurations import *
-from typing import List
 from schema import *
-import models as Models
-from fastapi import APIRouter, Depends, HTTPException, FastAPI
+
+from fastapi import APIRouter, Depends, HTTPException
+from error_handler import *
+from operations import *
 
 router = APIRouter(tags=["Search"])
 
@@ -20,7 +21,7 @@ def search_index(input: Search, current_user=Depends(active_user)):
     - A list of search hits containing information about the matched songs.
     """
     try:
-        if not es.indices.exists(index="songs"):
+        if not index_exists(index_name="songs"):
             raise HTTPException(status_code=404, detail="Index not found")
         query = {
             "query": {
@@ -31,11 +32,9 @@ def search_index(input: Search, current_user=Depends(active_user)):
             },
             "explain": True,
         }
-        result = es.search(index="songs", body=query, size=10)
+        result = index_search(index_name="songs", query=query, size=10)
         hits = result.get("hits", {}).get("hits", [])
         return hits
 
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+        handle_generic_error(e)

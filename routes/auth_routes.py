@@ -5,6 +5,7 @@ from schema import *
 from sqlalchemy.orm import Session
 from configurations import *
 import models as Models
+from error_handler import *
 
 router = APIRouter(tags=["Auth"])
 
@@ -27,9 +28,7 @@ async def login(user: User):
     if user_found is None or not pwd_context.verify(
         user.password_hash, user_found.password_hash
     ):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
-        )
+        handle_unauth()
 
     access_token_expires = timedelta(minutes=30)
     access_token = access_token_generate({"sub": user_found.id}, access_token_expires)
@@ -55,7 +54,7 @@ async def sign_up(user: User):
         session.query(Models.User).filter(Models.User.username == user.username).all()
     )
     if user_found:
-        raise HTTPException(status_code=400, detail="User already exists")
+        handle_bad_request()
 
     new_user = Models.User(
         username=user.username, password_hash=pwd_context.hash(user.password_hash)

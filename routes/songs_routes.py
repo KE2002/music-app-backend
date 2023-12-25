@@ -5,7 +5,8 @@ import models as Models
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 from elasticsearch import exceptions as es_exceptions
-
+from error_handler import *
+from operations import *
 
 router = APIRouter(tags=["Songs"])
 
@@ -19,14 +20,14 @@ def elastic_query_songs():
     - A generator yielding information about songs.
     """
     try:
-        if not es.indices.exists(index="songs"):
-            raise HTTPException(status_code=404, detail="Index not found")
+        if not index_exists(index_name="songs"):
+            handle_not_found()
         query = {
             "query": {"match_all": {}},
             "_source": ["title", "artist_name", "genre_name", "album_name", "id"],
         }
 
-        result = es.search(index="songs", body=query, size=100, scroll="1m")
+        result = index_search(index_name="songs", query=query, size=100, scroll="1m")
         hits = result.get("hits", {}).get("hits", [])
         scroll_id = result.get("_scroll_id")
         while hits:
@@ -35,25 +36,10 @@ def elastic_query_songs():
             result = es.scroll(scroll_id=scroll_id, scroll="1m")
             hits = result.get("hits", {}).get("hits", [])
 
-    except es_exceptions.ConnectionError as conn_err:
-        raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail=f"Elasticsearch connection error: {str(conn_err)}",
-        )
-
-    except es_exceptions.TransportError as trans_err:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Elasticsearch transport error: {str(trans_err)}",
-        )
-
-    except HTTPException as http_exception:
-        raise http_exception
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except HTTPException as e:
+        handle_http_exception(e)
+    except (es_exceptions.TransportError, Exception) as e:
+        handle_generic_error(e)
 
 
 @router.put("/songRating")
@@ -90,8 +76,8 @@ async def rate_songs(rating: SongRating, current_user=Depends(active_user)):
 
         session.commit()
 
-        es.update(
-            index="songs",
+        index_update(
+            index_name="songs",
             id=rating.id,
             body={
                 "doc": {
@@ -106,18 +92,11 @@ async def rate_songs(rating: SongRating, current_user=Depends(active_user)):
 
         return {"detail": "Rating Updated" if existing_rating else "Rating Added"}
 
-    except SQLAlchemyError as sql_err:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=sql_err
-        )
+    except HTTPException as e:
+        handle_http_exception(e)
 
-    except HTTPException as http_exception:
-        raise http_exception
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except (es_exceptions.TransportError, Exception, SQLAlchemyError) as e:
+        handle_generic_error(e)
 
 
 @router.post("/share")
@@ -141,18 +120,11 @@ async def share_song(share_details: Share, current_user=Depends(active_user)):
         session.add(share_song)
         session.commit()
         return {"Song shared successfully"}
-    except SQLAlchemyError as sql_err:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=sql_err
-        )
+    except HTTPException as e:
+        handle_http_exception(e)
 
-    except HTTPException as http_exception:
-        raise http_exception
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except (es_exceptions.TransportError, Exception, SQLAlchemyError) as e:
+        handle_generic_error(e)
 
 
 @router.get("/song/{sId}")
@@ -167,29 +139,15 @@ async def about_song(sId: str):
     - Information about the specified song.
     """
     try:
-        if not es.indices.exists(index="songs"):
-            raise HTTPException(status_code=404, detail="Index not found")
+        if not index_exists(index="songs"):
+            handle_not_found()
         query = {"query": {"term": {"_id": sId}}}
-        response = es.search(index="songs", body=query)
+        response = index_search(index_name="songs", query=query)
         song_data = response["hits"]["hits"][0]["_source"]
 
         return song_data
-    except es_exceptions.ConnectionError as conn_err:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Elasticsearch connection error: {str(conn_err)}",
-        )
+    except HTTPException as e:
+        handle_http_exception(e)
 
-    except es_exceptions.TransportError as trans_err:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Elasticsearch transport error: {str(trans_err)}",
-        )
-
-    except HTTPException as http_exception:
-        raise http_exception
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except (es_exceptions.TransportError, Exception) as e:
+        handle_generic_error(e)

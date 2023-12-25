@@ -7,7 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from operations import *
 from sqlalchemy.orm.exc import NoResultFound
-
+from error_handler import *
 
 router = APIRouter(tags=["Playlists"])
 
@@ -37,16 +37,10 @@ async def display_songs_playlist(pId: str, current_user=Depends(active_user)):
         return list_songs
 
     except NoResultFound:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Playlist not found for the current user",
-        )
+        handle_not_found()
 
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
+        handle_generic_error(e)
 
 
 @router.get("/displayUserPlaylistES")
@@ -62,30 +56,19 @@ def display_playlist_elastic_search(current_user=Depends(active_user)):
     """
     try:
         if not index_exists("playlist-info"):
-            raise HTTPException(status_code=404, detail="Index not found")
+            handle_not_found()
         query = {
             "query": {"match": {"user": current_user["user"].id}},
             "_source": ["name"],
         }
         result = index_search(index_name="playlist-info", query=query)
         return result
-    except es_exceptions.ConnectionError as conn_err:
-        raise HTTPException(
-            status_code=500, detail=f"Elasticsearch connection error: {str(conn_err)}"
-        )
 
-    except es_exceptions.TransportError as trans_err:
-        raise HTTPException(
-            status_code=500, detail=f"Elasticsearch transport error: {str(trans_err)}"
-        )
+    except HTTPException as e:
+        handle_http_exception(e)
 
-    except HTTPException as http_exception:
-        raise http_exception
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except (Exception, es_exceptions.TransportError) as e:
+        handle_generic_error(e)
 
 
 @router.get("/playlistSongsES/{pId}")
@@ -101,8 +84,8 @@ def display_songs_from_playlist(pId: str, current_user=Depends(active_user)):
     - Songs from the specified playlist.
     """
     try:
-        if not index_exists(index="playlist-info"):
-            raise HTTPException(status_code=404, detail="Index not found")
+        if not index_exists(index_name="playlist-info"):
+            handle_not_found()
         query = {
             "query": {
                 "bool": {
@@ -114,27 +97,15 @@ def display_songs_from_playlist(pId: str, current_user=Depends(active_user)):
             },
             "_source": ["songs"],
         }
-        result = index_search(index_name="playlist-info", body=query, size=100)
+        
+        result = index_search(index_name="playlist-info", query=query, size=100)
         hits = result.get("hits", {}).get("hits", [])
         return hits
+    except HTTPException as e:
+        handle_http_exception(e)
 
-    except es_exceptions.ConnectionError as conn_err:
-        raise HTTPException(
-            status_code=500, detail=f"Elasticsearch connection error: {str(conn_err)}"
-        )
-
-    except es_exceptions.TransportError as trans_err:
-        raise HTTPException(
-            status_code=500, detail=f"Elasticsearch transport error: {str(trans_err)}"
-        )
-
-    except HTTPException as http_exception:
-        raise http_exception
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except (es_exceptions.TransportError, Exception) as e:
+        handle_generic_error(e)
 
 
 @router.post("/createPlaylist")
@@ -159,9 +130,7 @@ async def create_playlist(plist: CreatePlaylist, current_user=Depends(active_use
             .all()
         )
         if existing_playlist:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Playlist exists"
-            )
+            handle_bad_request()
 
         new_playlist = Models.Playlist(name=plist.name, user_id=current_user["user"].id)
 
@@ -185,14 +154,9 @@ async def create_playlist(plist: CreatePlaylist, current_user=Depends(active_use
             index_name="playlist-info", body=playlist_data, id=playlist_data["id"]
         )
         return {"Playlist Created"}
-    except SQLAlchemyError as sql_err:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=sql_err
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+
+    except (SQLAlchemyError, es_exceptions.TransportError, Exception) as e:
+        handle_generic_error(e)
 
 
 @router.patch("/addSongs/playlist")
@@ -217,9 +181,7 @@ async def add_songs(playlistId: str, sId: str, current_user=Depends(active_user)
         if list_songs:
             is_present = any(item.song_id == sId for item in list_songs)
             if is_present:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST, detail="Song Exists"
-                )
+                handle_bad_request()
 
         add_song_playlist = Models.PlaylistSong(song_id=sId, playlist_id=playlistId)
         session.add(add_song_playlist)
@@ -234,17 +196,11 @@ async def add_songs(playlistId: str, sId: str, current_user=Depends(active_user)
             )
 
         return {"detail": "Song Added To Playlist"}
-    except SQLAlchemyError as sql_err:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=sql_err
-        )
 
-    except HTTPException as http_exception:
-        raise http_exception
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except HTTPException as e:
+        handle_http_exception(e)
+    except (SQLAlchemyError, es_exceptions.TransportError, Exception) as e:
+        handle_generic_error(e)
 
 
 @router.put("/deleteSong/playlist")
@@ -280,24 +236,15 @@ async def remove_song(playlistId: str, sId: str, current_user=Depends(active_use
                 )
 
         else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Song Not Found"
-            )
+            handle_not_found()
 
         return {"detail": "Song Removed From Playlist"}
 
-    except SQLAlchemyError as sql_err:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=sql_err
-        )
+    except HTTPException as e:
+        handle_http_exception(e)
 
-    except HTTPException as http_exception:
-        raise http_exception
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except (Exception, SQLAlchemyError, es_exceptions.TransportError) as e:
+        handle_generic_error(e)
 
 
 @router.delete("/deletePlaylist/{playlistId}")
@@ -322,27 +269,17 @@ async def delete_playlist(playlistId: str, current_user=Depends(active_user)):
             .first()
         )
         if not playlist_hit:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Forbidden! Not allowed to delete",
-            )
+            handle_forbidden()
         session.delete(playlist_hit)
         session.commit()
         index_dox_delete(index="playlist-info", id=playlistId)
         return {"detail": "Playlist deleted successfully"}
 
-    except SQLAlchemyError as sql_err:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=sql_err
-        )
+    except HTTPException as e:
+        handle_http_exception(e)
 
-    except HTTPException as http_exception:
-        raise http_exception
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+    except (Exception, SQLAlchemyError, es_exceptions.ApiError) as e:
+        handle_generic_error(e)
 
 
 @app.get("/curatePlaylist")
@@ -406,5 +343,8 @@ async def curate_playlist(
 
         index_elastic(index="playlist-info", body=playlist_data, id=playlist_data["id"])
         return song_list
-    except TransportError as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException as e:
+        handle_http_exception(e)
+
+    except (Exception, SQLAlchemyError, es_exceptions.ApiError) as e:
+        handle_generic_error(e)
