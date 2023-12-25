@@ -36,4 +36,6 @@ def search_index(input: Search, current_user=Depends(active_user)):
         return hits
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )

@@ -3,8 +3,8 @@ from configurations import *
 from schema import *
 import models as Models
 from sqlalchemy import func
-import qrcode
-from fastapi.responses import HTMLResponse, FileResponse
+from sqlalchemy.exc import SQLAlchemyError
+from elasticsearch import exceptions as es_exceptions
 
 
 router = APIRouter(tags=["Songs"])
@@ -35,8 +35,25 @@ def elastic_query_songs():
             result = es.scroll(scroll_id=scroll_id, scroll="1m")
             hits = result.get("hits", {}).get("hits", [])
 
+    except es_exceptions.ConnectionError as conn_err:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"Elasticsearch connection error: {str(conn_err)}",
+        )
+
+    except es_exceptions.TransportError as trans_err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Elasticsearch transport error: {str(trans_err)}",
+        )
+
+    except HTTPException as http_exception:
+        raise http_exception
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.put("/songRating")
@@ -89,10 +106,18 @@ async def rate_songs(rating: SongRating, current_user=Depends(active_user)):
 
         return {"detail": "Rating Updated" if existing_rating else "Rating Added"}
 
+    except SQLAlchemyError as sql_err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=sql_err
+        )
+
     except HTTPException as http_exception:
         raise http_exception
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.post("/share")
@@ -116,8 +141,18 @@ async def share_song(share_details: Share, current_user=Depends(active_user)):
         session.add(share_song)
         session.commit()
         return {"Song shared successfully"}
+    except SQLAlchemyError as sql_err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=sql_err
+        )
+
+    except HTTPException as http_exception:
+        raise http_exception
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.get("/song/{sId}")
@@ -139,5 +174,22 @@ async def about_song(sId: str):
         song_data = response["hits"]["hits"][0]["_source"]
 
         return song_data
+    except es_exceptions.ConnectionError as conn_err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Elasticsearch connection error: {str(conn_err)}",
+        )
+
+    except es_exceptions.TransportError as trans_err:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Elasticsearch transport error: {str(trans_err)}",
+        )
+
+    except HTTPException as http_exception:
+        raise http_exception
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )

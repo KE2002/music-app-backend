@@ -11,6 +11,10 @@ from nltk.tokenize import word_tokenize
 router = APIRouter(tags=["recommend"])
 
 
+def extract_doc_ids(bucket):
+    return [doc["_id"] for doc in bucket["hits"]["hits"]]
+
+
 @router.post("/songRecommendationES")
 def song_recommend(current_user=Depends(active_user)):
     """
@@ -63,7 +67,10 @@ def song_recommend(current_user=Depends(active_user)):
                                             "genre_name.keyword",
                                         ],
                                         "like": song_merge,
-                                        "stop_words": list(english_stopwords),
+                                   
+                                        "min_doc_freq": 5,
+                                        "stop_words": list(english_stopwords)
+                                        + ["feat"],
                                     }
                                 }
                             ]
@@ -73,6 +80,7 @@ def song_recommend(current_user=Depends(active_user)):
                     "score_mode": "sum",
                 }
             },
+            # "explain": True,
             "aggs": {
                 "top_artists": {
                     "terms": {
@@ -123,6 +131,13 @@ def song_recommend(current_user=Depends(active_user)):
         }
 
         result = es.search(index="songs", body=mlt_query, size=100)
+        top_artists_buckets = result["aggregations"]["top_artists"]["buckets"]
+        top_genres_buckets = result["aggregations"]["top_genres"]["buckets"]
+        top_albums_buckets = result["aggregations"]["top_albums"]["buckets"]
+        # artist_doc_ids = extract_doc_ids(top_artists_buckets)
+        # genre_doc_ids = extract_doc_ids(top_genres_buckets)
+        # album_doc_ids = extract_doc_ids(top_albums_buckets)
+        # return top_albums_buckets
         return result
         explanations = {}
         for hit in result.get("hits", {}).get("hits", []):
