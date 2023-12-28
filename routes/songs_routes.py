@@ -27,14 +27,15 @@ def elastic_query_songs():
             "_source": ["title", "artist_name", "genre_name", "album_name", "id"],
         }
 
-        result = index_search(index_name="songs", query=query, size=100, scroll="1m")
-        hits = result.get("hits", {}).get("hits", [])
-        scroll_id = result.get("_scroll_id")
-        while hits:
-            songs_info = [hit["_source"] for hit in hits]
-            yield songs_info
-            result = es.scroll(scroll_id=scroll_id, scroll="1m")
-            hits = result.get("hits", {}).get("hits", [])
+        result = index_search(index_name="songs", query=query, size=100)
+        return result
+        # hits = result.get("hits", {}).get("hits", [])
+        # scroll_id = result.get("_scroll_id")
+        # while hits:
+        #     songs_info = [hit["_source"] for hit in hits]
+        #     yield songs_info
+        #     result = es.scroll(scroll_id=scroll_id, scroll="1m")
+        #     hits = result.get("hits", {}).get("hits", [])
 
     except HTTPException as e:
         handle_http_exception(e)

@@ -10,6 +10,7 @@ from routes import (
 
 )
 
+Models.Base.metadata.create_all(engine)
 
 app.include_router(auth_routes.router)
 app.include_router(songs_routes.router)

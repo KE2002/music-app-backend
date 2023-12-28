@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: elasticsearch-port-forward
+spec:
+  containers:
+  - name: port-forward
+    image: busybox
+    command: ["/bin/sh", "-c", "exec tail -f /dev/null"]
+  restartPolicy: Never
