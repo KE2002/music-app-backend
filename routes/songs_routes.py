@@ -27,8 +27,9 @@ def elastic_query_songs():
             "_source": ["title", "artist_name", "genre_name", "album_name", "id"],
         }
 
-        result = index_search(index_name="songs", query=query, size=100)
-        return result
+        result = index_search(index_name="songs", query=query, size=1000)
+        hits = result.get("hits", {}).get("hits", [])
+        return [hit["_source"] for hit in hits]
         # hits = result.get("hits", {}).get("hits", [])
         # scroll_id = result.get("_scroll_id")
         # while hits:
@@ -140,7 +141,7 @@ async def about_song(sId: str):
     - Information about the specified song.
     """
     try:
-        if not index_exists(index="songs"):
+        if not index_exists(index_name="songs"):
             handle_not_found()
         query = {"query": {"term": {"_id": sId}}}
         response = index_search(index_name="songs", query=query)

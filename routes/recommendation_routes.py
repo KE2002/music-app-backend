@@ -138,7 +138,7 @@ def song_recommend(current_user=Depends(active_user)):
         # genre_doc_ids = extract_doc_ids(top_genres_buckets)
         # album_doc_ids = extract_doc_ids(top_albums_buckets)
         # return top_albums_buckets
-        return result
+        return result.get("hits", {}).get("hits", [])
         explanations = {}
         for hit in result.get("hits", {}).get("hits", []):
             # print(hit)

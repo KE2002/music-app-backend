@@ -62,7 +62,8 @@ def display_playlist_elastic_search(current_user=Depends(active_user)):
             "_source": ["name"],
         }
         result = index_search(index_name="playlist-info", query=query)
-        return result
+        hits = result.get("hits", {}).get("hits", [])
+        return hits
 
     except HTTPException as e:
         handle_http_exception(e)
