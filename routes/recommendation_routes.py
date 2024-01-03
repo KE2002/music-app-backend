@@ -6,8 +6,9 @@ import models as Models
 from fastapi import APIRouter, Depends, HTTPException
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
+import nltk
 
-
+nltk.download('stopwords')
 router = APIRouter(tags=["recommend"])
 
 
