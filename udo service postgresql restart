@@ -1,0 +1,11 @@
+[0;1;31m●[0m postgresql@12-main.service - PostgreSQL Cluster 12-main
+     Loaded: loaded (/lib/systemd/system/postgresql@.service; enabled-runtime; vendor preset: enabled)
+     Active: [0;1;31mfailed[0m (Result: protocol) since Sun 2024-01-07 12:13:39 IST; 10s ago
+    Process: 120013 ExecStart=/usr/bin/pg_ctlcluster --skip-systemctl-redirect 12-main start [0;1;31m(code=exited, status=1/FAILURE)[0m
+
+Jan 07 12:13:39 MSD2 systemd[1]: Starting PostgreSQL Cluster 12-main...
+Jan 07 12:13:39 MSD2 postgresql@12-main[120015]: Error: Could not open logfile /var/log/postgresql/postgresql-12-main.log
+Jan 07 12:13:39 MSD2 postgresql@12-main[120013]: Error: /usr/lib/postgresql/12/bin/pg_ctl /usr/lib/postgresql/12/bin/pg_ctl start -D /var/lib/postgresql/12/main -l /var/log/postgresql/postgresql-12-main.log -s -o  -c config_file="/etc/postgresql/12/main/postgresql.conf"  exited with status 1:
+Jan 07 12:13:39 MSD2 systemd[1]: postgresql@12-main.service: Can't open PID file /run/postgresql/12-main.pid (yet?) after start: Operation not permitted
+Jan 07 12:13:39 MSD2 systemd[1]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mpostgresql@12-main.service: Failed with result 'protocol'.[0m
+Jan 07 12:13:39 MSD2 systemd[1]: [0;1;31m[0;1;39m[0;1;31mFailed to start PostgreSQL Cluster 12-main.[0m

@@ -14,13 +14,12 @@ spec:
     spec:
       containers:
       - name: m3
-        image: karthikeyan222/fastapi-sample:v3.0 
+        image: karthikeyan222/fastapi-backend:v18.0 
         ports:
         - containerPort: 80
         env:
           - name: POSTGRES_HOST
             value: postgres-service
-        # Add other environment variables as needed
 ---
 apiVersion: v1
 kind: Service

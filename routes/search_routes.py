@@ -30,7 +30,7 @@ def search_index(input: Search, current_user=Depends(active_user)):
                     "fields": ["title", "artist_name", "genre_name", "album_name"],
                 }
             },
-            "explain": True,
+            # "explain": True,
         }
         result = index_search(index_name="songs", query=query, size=10)
         hits = result.get("hits", {}).get("hits", [])

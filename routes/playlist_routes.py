@@ -188,12 +188,12 @@ async def add_songs(playlistId: str, sId: str, current_user=Depends(active_user)
         session.add(add_song_playlist)
         session.commit()
 
-        playlist_doc = get_doc(index="playlist-info", id=playlistId)
+        playlist_doc = get_doc(index_name="playlist-info", id=playlistId)
         songs = playlist_doc["_source"].get("songs", [])
         if sId not in songs:
             songs.append(sId)
             index_update(
-                index="playlist-info", id=playlistId, body={"doc": {"songs": songs}}
+                index_name="playlist-info", id=playlistId, body={"doc": {"songs": songs}}
             )
 
         return {"detail": "Song Added To Playlist"}
@@ -227,13 +227,13 @@ async def remove_song(playlistId: str, sId: str, current_user=Depends(active_use
         if playlist_song:
             session.delete(playlist_song)
             session.commit()
-            playlist_doc = get_doc(index="playlist-info", id=playlistId)
+            playlist_doc = get_doc(index_name="playlist-info", id=playlistId)
             songs = playlist_doc["_source"].get("songs", [])
 
             if sId in songs:
                 songs.remove(sId)
                 index_update(
-                    index="playlist-info", id=playlistId, body={"doc": {"songs": songs}}
+                    index_name="playlist-info", id=playlistId, body={"doc": {"songs": songs}}
                 )
 
         else:
@@ -269,11 +269,12 @@ async def delete_playlist(playlistId: str, current_user=Depends(active_user)):
             )
             .first()
         )
+        print(playlist_hit)
         if not playlist_hit:
             handle_forbidden()
         session.delete(playlist_hit)
         session.commit()
-        index_dox_delete(index="playlist-info", id=playlistId)
+        index_dox_delete(index_name="playlist-info", id=playlistId)
         return {"detail": "Playlist deleted successfully"}
 
     except HTTPException as e:
@@ -317,7 +318,7 @@ async def curate_playlist(
     query = {"query": {"bool": {"should": should_conditions}}}
     # return query
     try:
-        result = index_search(index="songs", body=query, size=20)
+        result = index_search(index_name="songs", query=query, size=20)
         hits = result.get("hits", {}).get("hits", [])
         # return hits
         song_list = [hit["_source"] for hit in hits]
@@ -342,7 +343,7 @@ async def curate_playlist(
             "songs": songs,
         }
 
-        index_elastic(index="playlist-info", body=playlist_data, id=playlist_data["id"])
+        index_elastic(index_name="playlist-info", body=playlist_data, id=playlist_data["id"])
         return song_list
     except HTTPException as e:
         handle_http_exception(e)

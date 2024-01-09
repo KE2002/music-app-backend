@@ -37,11 +37,11 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 ALGORITHM = os.environ["ALGORITHM"]
 ACCESS_TOKEN_EXPIRE_MINUTES = os.environ["ACCESS_TOKEN_EXPIRE_MINUTES"]
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-ELASTICSEARCH_URL = "https://host.minikube.internal:9200"
+ELASTICSEARCH_URL = "https://localhost:9200"
 
 es = Elasticsearch(
     hosts=ELASTICSEARCH_URL,
-    basic_auth=("elastic", "wPc_9KpUMnW0l=9wv-P8"),
+    basic_auth=("elastic", "Ug7_T=-5myk6MEUPYCeS"),
     verify_certs=False,
 )
 

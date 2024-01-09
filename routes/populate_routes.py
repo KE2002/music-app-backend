@@ -57,9 +57,9 @@ async def populate_tables(file: UploadFile = File(...)):
 
 @app.post("/populate_elastic", response_model=List[SongList])
 async def populate_tables():
-    if not es.indices.exists(index="songs_final"):
+    if not es.indices.exists(index="songs"):
         es.indices.create(
-            index="songs_final",
+            index="songs",
             body={
                 "mappings": {
                     "properties": {
@@ -93,7 +93,7 @@ async def populate_tables():
             "album_id": item.album.id,
             "total_ratings": 0.00 if not tot_rating else tot_rating,
         }
-        es.index(index="songs_final", body=it, id=item.id)
+        es.index(index="songs", body=it, id=item.id)
     return songs_query
 
 
