@@ -94,6 +94,8 @@ async def populate_tables():
             "total_ratings": 0.00 if not tot_rating else tot_rating,
         }
         es.index(index="songs", body=it, id=item.id)
+    if not es.indices.exists(index="playlist-info"):
+        es.indices.create(index="playlist-info")
     return songs_query
 
 

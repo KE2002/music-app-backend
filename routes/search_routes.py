@@ -27,10 +27,14 @@ def search_index(input: Search, current_user=Depends(active_user)):
             "query": {
                 "multi_match": {
                     "query": input.input,
-                    "fields": ["title", "artist_name", "genre_name", "album_name"],
+                    "type": "best_fields",
+                    "fields": ["title^4", "artist_name^3", "genre_name^2", "album_name"],
+                    "fuzziness": "auto",
+                    
                 }
+                
             },
-            # "explain": True,
+            "explain": True,
         }
         result = index_search(index_name="songs", query=query, size=10)
         hits = result.get("hits", {}).get("hits", [])
